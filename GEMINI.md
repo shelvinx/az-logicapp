@@ -1,0 +1,1 @@
+1. Azure Verified Modules are Preferred, if the module is production ready.

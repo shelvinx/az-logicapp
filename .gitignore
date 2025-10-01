@@ -1,0 +1,37 @@
+# Terraform state files
+*.tfstate
+*.tfstate.*.backup
+*.tfstate.lock.info
+
+# Explicitly ignore terraform.tfstate.backup
+terraform.tfstate.backup
+
+# Terraform cache directory
+.terraform/
+
+# Terraform plan files
+*.tfplan
+
+# Crash log files
+crash.log
+*.log
+
+# Terraform CLI configuration files
+.terraformrc
+terraform.rc
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# Operating system specific files
+.DS_Store
+
+# SSH Keys
+*.pem
+
+# Backup files
+*.bak
+
+# Ignore Terraform Lock File
+.terraform.lock.hcl

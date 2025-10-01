@@ -1,0 +1,59 @@
+module "naming" {
+    source = "Azure/naming/azurerm"
+    version = "0.4.2"
+
+    suffix = ["appname", "dev", "uks", "01"]
+}
+
+resource "azurerm_storage_account" "example" {
+  account_replication_type = "LRS"
+  account_tier             = "Standard"
+  location                 = var.location
+  name                     = module.naming.storage_account.name
+  resource_group_name      = var.resource_group_name
+
+  network_rules {
+    default_action = "Allow"
+    bypass         = ["AzureServices"]
+  }
+}
+
+module "avm-res-web-serverfarm" {
+  source  = "Azure/avm-res-web-serverfarm/azurerm"
+  version = "0.7.0"
+
+  name                = module.naming.app_service_plan.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  os_type             = var.app_service_plan_os_type
+
+  sku_name = var.app_service_plan_sku
+  zone_balancing_enabled = false
+  worker_count = 1
+}
+
+module "avm-res-web-site" {
+  source  = "Azure/avm-res-web-site/azurerm"
+  version = "0.19.1"
+
+  name                = module.naming.logic_app_workflow.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  os_type             = var.app_service_plan_os_type
+  kind                = var.app_service_kind
+  service_plan_resource_id = module.avm-res-web-serverfarm.resource_id
+
+  storage_account_access_key = azurerm_storage_account.example.primary_access_key
+  storage_account_name = azurerm_storage_account.example.name
+  enable_application_insights = false
+  https_only = true
+  client_certificate_mode = "OptionalInteractiveUser"
+  client_certificate_enabled = false
+  managed_identities = {
+    system_assigned = true
+  }
+
+  app_settings = {
+    FUNCTIONS_WORKER_RUNTIME = "dotnet"
+  }
+}
