@@ -1,4 +1,4 @@
-name: Deploy Logic App
+name: Deploy Standard Logic App
 
 on:
   push:
@@ -23,9 +23,27 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy Logic App
-        uses: Azure/logic-app-deploy@v1
+      - name: Build and Zip Logic App Project
+        run: |
+          # 1. Create a temporary directory for the package
+          mkdir staging
+
+          # 2. Create the required host.json and connections.json
+          echo '{"version": "2.0"}' > staging/host.json
+          echo '{}' > staging/connections.json
+
+          # 3. Create the workflow sub-folder
+          mkdir -p staging/test-workflow
+
+          # 4. Copy your definition file to the correct location and name
+          cp workflow_definitions/test-workflow.json staging/test-workflow/workflow.json
+
+          # 5. Zip the contents of the staging directory
+          cd staging
+          zip -r ../MyLogicAppPackage.zip .
+
+      - name: Deploy to Standard Logic App
+        uses: Azure/functions-action@v1 # Use the functions-action
         with:
-          resource-group-name: 'rg-logicapp-test'
-          logic-app-name: 'logic-appname-dev-uks-01'
-          workflow-file: 'workflow_definitions/test-workflow.json'
+          app-name: 'logic-appname-dev-uks-01' # Your Standard Logic App name
+          package: 'MyLogicAppPackage.zip'    # The zip file we just created
