@@ -1,43 +1,31 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy dotnet core app to Azure Function App - logic-appname-dev-uks-01
+name: Deploy Logic App
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: 'v4.0' # set this to the dotnet version to use
 
 jobs:
-  build-and-deploy:
-    runs-on: windows-latest
-    
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Azure
+    permissions:
+      id-token: write
+      contents: read
     steps:
-      - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-        uses: actions/setup-dotnet@v1
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: 'Resolve Project Dependencies Using Dotnet'
-        shell: pwsh
-        run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release --output ./output
-          popd
-      
-      - name: 'Run Azure Functions Action'
-        uses: Azure/functions-action@v1
-        id: fa
+      - name: Deploy Logic App
+        uses: Azure/logic-app-deploy@v1
         with:
-          app-name: 'logic-appname-dev-uks-01'
-          slot-name: 'Production'
-          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E880CA332E27466AAD18E3F89FCA7041 }}
+          resource-group-name: 'rg-logicapp-test'
+          logic-app-name: 'logic-appname-dev-uks-01'
+          workflow-file: 'workflow_definitions/test-workflow.json'
