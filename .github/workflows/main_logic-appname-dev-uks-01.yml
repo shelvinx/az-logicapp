@@ -32,9 +32,9 @@ jobs:
       - name: 'Prepare deployment package'
         run: |
           mkdir -p deploy/test-workflow
-          cp StandardLogicApp/host.json deploy/
-          cp StandardLogicApp/connections.json deploy/
-          cp workflow_definitions/test-workflow.json deploy/test-workflow/workflow.json
+          cp workflow_definitions/test-logicapp/host.json deploy/
+          cp workflow_definitions/test-logicapp/connections.json deploy/
+          cp workflow_definitions/test-logicapp/workflow.json deploy/test-workflow/workflow.json
 
       - name: Zip artifact for deployment
         run: |
