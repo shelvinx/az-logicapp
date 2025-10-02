@@ -7,8 +7,3 @@ variable "location" {
   type        = string
   description = "Location"
 }
-
-variable "subscription_id_dev" {
-  type        = string
-  description = "Subscription ID"
-}
