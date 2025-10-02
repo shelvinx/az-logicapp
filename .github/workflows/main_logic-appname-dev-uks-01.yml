@@ -34,7 +34,7 @@ jobs:
           mkdir -p deploy/test-workflow
           cp workflow_definitions/test-logicapp/host.json deploy/
           cp workflow_definitions/test-logicapp/connections.json deploy/
-          cp workflow_definitions/test-logicapp/workflow.json deploy/test-workflow/workflow.json
+          cp workflow_definitions/test-logicapp/test-workflow/workflow.json deploy/test-workflow/workflow.json
 
       - name: Zip artifact for deployment
         run: |
