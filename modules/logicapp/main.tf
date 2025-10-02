@@ -55,5 +55,6 @@ module "avm-res-web-site" {
 
   app_settings = {
     FUNCTIONS_WORKER_RUNTIME = "dotnet"
+    WEBSITE_RUN_FROM_PACKAGE = "1"
   }
 }
