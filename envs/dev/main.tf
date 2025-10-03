@@ -1,31 +1,29 @@
-locals {
-  logic_apps = { for idx, app in var.logic_apps : idx => app }
-}
-
+# Create one RG per unique name
 resource "azurerm_resource_group" "rg" {
-  for_each = toset([for app in var.logic_apps : app.resource_group_name])
+  for_each = var.resource_groups
+  
   name     = each.key
-  location = var.location
+  location = each.value.location
 }
 
 module "naming" {
-  for_each = local.logic_apps
+  for_each = var.logic_apps
   source   = "Azure/naming/azurerm"
   version  = "0.4.2"
 
   # The environment is added by the naming module convention, so it is removed from the suffix.
-  suffix = [each.value.logic_app_name, "uks", format("%02d", each.key + 1)]
+  suffix = [each.key, "uks", "dev"]
 }
 
 module "logicapp" {
-  for_each = local.logic_apps
+  for_each = var.logic_apps
   source   = "../../modules/logicapp"
 
   resource_group_name = each.value.resource_group_name
   location            = var.location
 
   app_service_plan_os_type = "Windows"
-  app_service_plan_sku     = each.value.app_service_plan_sku_name
+  app_service_plan_sku     = each.value.app_service_plan_sku
   app_service_kind         = "logicapp"
 
   account_tier             = var.account_tier

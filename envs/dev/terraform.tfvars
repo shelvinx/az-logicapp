@@ -2,17 +2,24 @@ location                 = "uksouth"
 account_tier             = "Standard"
 account_replication_type = "LRS"
 
-logic_apps = [
-  {
-    logic_app_name            = "myworkflow"
-    resource_group_name       = "rg-dev-uks"
-    app_service_plan_sku_name = "WS1"
-    storage_account_name      = "stmyworkflowdevuks01"
-  },
-  {
-    logic_app_name            = "anotherworkflow"
-    resource_group_name       = "rg-prod-uks"
-    app_service_plan_sku_name = "P1v2"
-    storage_account_name      = "stanotherworkflowproduks01"
+resource_groups = {
+  lxr-rg-1 = {
+    location = "uksouth"
   }
-]
+  lxr-rg-2 = {
+    location = "uksouth"
+  }
+}
+
+logic_apps = {
+  lxr-app-1 = {
+    resource_group_name = "lxr-rg-1"
+    app_service_plan_sku = "WS1"
+    storage_account_name = "stworkflow1devuks01"
+  },
+  lxr-app-2 = {
+    resource_group_name = "lxr-rg-2"
+    app_service_plan_sku = "WS1"
+    storage_account_name = "stworkflow2devuks01"
+  }
+}

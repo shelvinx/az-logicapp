@@ -48,6 +48,6 @@ jobs:
       - name: 'Run Azure WebApp deploy'
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'logic-appname-dev-uks-01'
+          app-name: 'logic-lxr-app-1-dev-uks'
           slot-name: 'Production'
           package: deployment.zip

@@ -1,29 +1,16 @@
-variable "logic_apps" {
-  description = "A list of Standard Logic Apps to deploy."
-  type = list(object({
-    logic_app_name            = string
-    resource_group_name       = string
-    app_service_plan_sku_name = string
-    storage_account_name      = string
-  }))
+variable "resource_groups" {
+  type = map(any)
+  description = "The resource groups to be created."
+}
 
-  validation {
-    condition = alltrue([
-      for app in var.logic_apps : can(regex("^[a-z0-9]+$", app.storage_account_name))
-    ])
-    error_message = "Storage account names must only contain lowercase letters and numbers."
-  }
+variable "logic_apps" {
+  type = map(any)
+  description = "The logic apps to be created."
 }
 
 variable "location" {
   type        = string
   description = "The Azure region where the resources will be deployed."
-}
-
-variable "environment" {
-  type        = string
-  description = "The deployment environment name (e.g., 'dev', 'prod')."
-  default     = "dev"
 }
 
 variable "account_tier" {

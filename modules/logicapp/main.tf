@@ -1,5 +1,3 @@
-
-
 resource "azurerm_storage_account" "example" {
   account_replication_type = var.account_replication_type
   account_tier             = var.account_tier
@@ -50,6 +48,10 @@ module "avm-res-web-site" {
 
   app_settings = {
     FUNCTIONS_WORKER_RUNTIME = "dotnet"
-    WEBSITE_RUN_FROM_PACKAGE = "1"
+    #WEBSITE_RUN_FROM_PACKAGE = "1"
+  }
+
+  site_config = {
+    health_check_path = "/"
   }
 }
