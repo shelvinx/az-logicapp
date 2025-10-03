@@ -1,0 +1,147 @@
+# This pipeline is designed for deploying Terraform infrastructure to Azure.
+# It uses parameters to allow for deployment to different environments.
+#
+# 1. Validate Stage:
+#    - Runs automatically on commits to the main branch (for the default environment).
+#    - Installs Terraform.
+#    - Initializes Terraform with the Azure backend, using a state file specific to the environment.
+#    - Validates the Terraform configuration syntax.
+#    - Creates a Terraform plan and publishes it as a pipeline artifact.
+#
+# 2. Deploy Stage:
+#    - Requires manual approval to proceed.
+#    - Depends on the successful completion of the 'Validate' stage.
+#    - Downloads the Terraform plan artifact.
+#    - Applies the plan to deploy the infrastructure to the selected Azure environment.
+
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+- name: environment
+  displayName: Environment to Deploy
+  type: string
+  default: dev
+  values:
+  - dev
+  - stg
+  - prod
+
+variables:
+  # Define the Azure Service Connection used to authenticate with your Azure subscription.
+  # Create this in Project Settings -> Service connections.
+  serviceConnectionName: 'Your-Azure-Service-Connection'
+
+  # The resource group where the Terraform state storage account is located.
+  backendResourceGroupName: 'rg-terraform-state'
+
+  # The name of the storage account for the Terraform state file.
+  backendStorageAccountName: 'stterraformstate' # Must be a globally unique name
+
+  # The container name within the storage account.
+  backendContainerName: 'tfstate'
+
+  # The name of the Terraform state file, now dynamic based on the environment parameter.
+  backendKey: 'logicapp.${{ parameters.environment }}.tfstate'
+
+  # The directory where your Terraform .tf files are located, now dynamic.
+  # CORRECTED PATH: Added '/envs/' to match your repository structure.
+  workingDirectory: '$(System.DefaultWorkingDirectory)/tf-az-logicapp/envs/${{ parameters.environment }}'
+
+stages:
+- stage: Validate
+  displayName: 'Validate and Plan Terraform for ${{ parameters.environment }}'
+  jobs:
+  - job: Plan
+    displayName: 'Terraform Plan'
+    steps:
+    - task: InstallLatestTerraform@1
+      displayName: 'Install Terraform'
+      inputs:
+        version: 'latest'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(workingDirectory)'
+        backendServiceArm: '$(serviceConnectionName)'
+        backendAzureRmResourceGroupName: '$(backendResourceGroupName)'
+        backendAzureRmStorageAccountName: '$(backendStorageAccountName)'
+        backendAzureRmContainerName: '$(backendContainerName)'
+        backendAzureRmKey: '$(backendKey)'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Validate'
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+        workingDirectory: '$(workingDirectory)'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Plan'
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(workingDirectory)'
+        environmentServiceNameAzureRM: '$(serviceConnectionName)'
+        commandOptions: '-out=tfplan'
+
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish Plan Artifact'
+      inputs:
+        targetPath: '$(workingDirectory)/tfplan'
+        artifact: 'tfplan-${{ parameters.environment }}' # Make artifact name unique per environment
+        publishLocation: 'pipeline'
+
+- stage: Deploy
+  displayName: 'Deploy Terraform to ${{ parameters.environment }}'
+  dependsOn: Validate
+  condition: succeeded()
+  jobs:
+  - deployment: Apply
+    displayName: 'Terraform Apply'
+    environment: 'production' # You can define environments in ADO for approval checks.
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: DownloadPipelineArtifact@2
+            displayName: 'Download Plan Artifact'
+            inputs:
+              buildSource: 'current'
+              artifact: 'tfplan-${{ parameters.environment }}' # Download correct artifact
+              downloadPath: '$(workingDirectory)'
+
+          - task: InstallLatestTerraform@1
+            displayName: 'Install Terraform'
+            inputs:
+              version: 'latest'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(workingDirectory)'
+              backendServiceArm: '$(serviceConnectionName)'
+              backendAzureRmResourceGroupName: '$(backendResourceGroupName)'
+              backendAzureRmStorageAccountName: '$(backendStorageAccountName)'
+              backendAzureRmContainerName: '$(backendContainerName)'
+              backendAzureRmKey: '$(backendKey)'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Apply'
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '$(workingDirectory)'
+              environmentServiceNameAzureRM: '$(serviceConnectionName)'
+              commandOptions: 'tfplan'
+
