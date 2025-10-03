@@ -42,3 +42,18 @@ variable "account_replication_type" {
     type = string
     description = "Account Replication Type"
 }
+
+variable "storage_account_name" {
+    type = string
+    description = "Storage Account Name"
+}
+
+variable "app_service_plan_name" {
+    type = string
+    description = "App Service Plan Name"
+}
+
+variable "logic_app_workflow_name" {
+    type = string
+    description = "Logic App Workflow Name"
+}

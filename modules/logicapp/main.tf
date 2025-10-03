@@ -1,15 +1,8 @@
-module "naming" {
-    source = "Azure/naming/azurerm"
-    version = "0.4.2"
-
-    suffix = ["appname", "dev", "uks", "01"]
-}
-
 resource "azurerm_storage_account" "example" {
-  account_replication_type = "LRS"
-  account_tier             = "Standard"
+  account_replication_type = var.account_replication_type
+  account_tier             = var.account_tier
   location                 = var.location
-  name                     = module.naming.storage_account.name
+  name                     = var.storage_account_name
   resource_group_name      = var.resource_group_name
 
   network_rules {
@@ -22,7 +15,7 @@ module "avm-res-web-serverfarm" {
   source  = "Azure/avm-res-web-serverfarm/azurerm"
   version = "0.7.0"
 
-  name                = module.naming.app_service_plan.name
+  name                = var.app_service_plan_name
   location            = var.location
   resource_group_name = var.resource_group_name
   os_type             = var.app_service_plan_os_type
@@ -36,7 +29,7 @@ module "avm-res-web-site" {
   source  = "Azure/avm-res-web-site/azurerm"
   version = "0.19.1"
 
-  name                = module.naming.logic_app_workflow.name
+  name                = var.logic_app_workflow_name
   location            = var.location
   resource_group_name = var.resource_group_name
   os_type             = var.app_service_plan_os_type
@@ -55,6 +48,10 @@ module "avm-res-web-site" {
 
   app_settings = {
     FUNCTIONS_WORKER_RUNTIME = "dotnet"
-    WEBSITE_RUN_FROM_PACKAGE = "1"
+    #WEBSITE_RUN_FROM_PACKAGE = "1"
+  }
+
+  site_config = {
+    health_check_path = "/"
   }
 }

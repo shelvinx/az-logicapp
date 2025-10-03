@@ -13,7 +13,7 @@ terraform {
     resource_group_name  = "rg-tfstate-management"
     storage_account_name = "tfauratest"
     container_name       = "tfstate"
-    key                  = "terraform.tfstate"
+    key                  = "prod.tfstate"
     use_azuread_auth     = true
   }
 }
