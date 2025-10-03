@@ -13,7 +13,8 @@ module "naming" {
   source   = "Azure/naming/azurerm"
   version  = "0.4.2"
 
-  suffix = [each.value.logic_app_name, var.environment, "uks", format("%02d", each.key + 1)]
+  # The environment is added by the naming module convention, so it is removed from the suffix.
+  suffix = [each.value.logic_app_name, "uks", format("%02d", each.key + 1)]
 }
 
 module "logicapp" {
@@ -30,7 +31,8 @@ module "logicapp" {
   account_tier             = var.account_tier
   account_replication_type = var.account_replication_type
 
-  storage_account_name    = module.naming[each.key].storage_account.name
+  # Use the user-provided storage account name, which is validated to be compliant.
+  storage_account_name    = each.value.storage_account_name
   app_service_plan_name   = module.naming[each.key].app_service_plan.name
   logic_app_workflow_name = module.naming[each.key].logic_app_workflow.name
 

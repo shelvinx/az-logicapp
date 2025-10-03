@@ -1,10 +1,18 @@
 variable "logic_apps" {
   description = "A list of Standard Logic Apps to deploy."
   type = list(object({
-    logic_app_name      = string
-    resource_group_name = string
+    logic_app_name            = string
+    resource_group_name       = string
     app_service_plan_sku_name = string
+    storage_account_name      = string
   }))
+
+  validation {
+    condition = alltrue([
+      for app in var.logic_apps : can(regex("^[a-z0-9]+$", app.storage_account_name))
+    ])
+    error_message = "Storage account names must only contain lowercase letters and numbers."
+  }
 }
 
 variable "location" {
