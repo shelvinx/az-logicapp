@@ -31,10 +31,16 @@ jobs:
 
       - name: 'Prepare deployment package'
         run: |
-          mkdir -p deploy/test-workflow
-          cp workflow_definitions/test-logicapp/host.json deploy/
-          cp workflow_definitions/test-logicapp/connections.json deploy/
-          cp workflow_definitions/test-logicapp/test-workflow/workflow.json deploy/test-workflow/workflow.json
+          mkdir -p deploy
+          cp workflow_definitions/host.json deploy/
+          cp workflow_definitions/connections.json deploy/
+          for dir in workflow_definitions/*/ ; do
+            if [ -d "$dir" ]; then
+              workflow_name=$(basename "$dir")
+              mkdir -p "deploy/$workflow_name"
+              cp "$dir"*.json "deploy/$workflow_name/"
+            fi
+          done
 
       - name: Zip artifact for deployment
         run: |
