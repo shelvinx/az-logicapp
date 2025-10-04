@@ -5,10 +5,9 @@ resource "azurerm_storage_account" "example" {
   name                     = var.storage_account_name
   resource_group_name      = var.resource_group_name
 
-  network_rules {
-    default_action = "Allow"
-    bypass         = ["AzureServices"]
-  }
+  https_traffic_only_enabled = true
+  public_network_access_enabled = true
+  shared_access_key_enabled = true
 }
 
 module "avm-res-web-serverfarm" {
@@ -48,7 +47,7 @@ module "avm-res-web-site" {
 
   app_settings = {
     FUNCTIONS_WORKER_RUNTIME = "dotnet"
-    #WEBSITE_RUN_FROM_PACKAGE = "1"
+    WEBSITE_RUN_FROM_PACKAGE = "1"
   }
 
   site_config = {
