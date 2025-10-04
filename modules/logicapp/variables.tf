@@ -57,3 +57,8 @@ variable "logic_app_workflow_name" {
     type = string
     description = "Logic App Workflow Name"
 }
+
+variable "zone_balancing_enabled" {
+    type = bool
+    description = "Zone Balancing Enabled"
+}

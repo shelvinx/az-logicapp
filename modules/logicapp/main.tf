@@ -21,7 +21,7 @@ module "avm-res-web-serverfarm" {
   os_type             = var.app_service_plan_os_type
 
   sku_name = var.app_service_plan_sku
-  zone_balancing_enabled = false
+  zone_balancing_enabled = var.zone_balancing_enabled
   worker_count = 1
 }
 

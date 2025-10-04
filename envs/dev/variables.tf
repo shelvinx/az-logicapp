@@ -22,3 +22,13 @@ variable "account_replication_type" {
   type        = string
   description = "The storage account replication type."
 }
+
+variable "zone_balancing_enabled" {
+  type        = bool
+  description = "The zone balancing enabled."
+}
+
+variable "environment" {
+  type        = string
+  description = "The environment."
+}

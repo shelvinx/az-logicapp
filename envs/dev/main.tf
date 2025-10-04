@@ -12,7 +12,7 @@ module "naming" {
   version  = "0.4.2"
 
   # The environment is added by the naming module convention, so it is removed from the suffix.
-  suffix = [each.key, "uks", "dev"]
+  suffix = [each.key, "uks", var.environment]
 }
 
 module "logicapp" {
@@ -33,6 +33,8 @@ module "logicapp" {
   storage_account_name    = each.value.storage_account_name
   app_service_plan_name   = module.naming[each.key].app_service_plan.name
   logic_app_workflow_name = module.naming[each.key].logic_app_workflow.name
+
+  zone_balancing_enabled = var.zone_balancing_enabled
 
   depends_on = [azurerm_resource_group.rg]
 }
