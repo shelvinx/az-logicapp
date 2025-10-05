@@ -35,5 +35,5 @@ variable "environment" {
 
 variable "tags" {
   type        = map(any)
-  description = "The tags."
+  description = "Tags"
 }
