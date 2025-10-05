@@ -1,0 +1,227 @@
+# This is a GitHub Actions workflow file
+name: Plan and Deploy Terraform
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # This first job checks which paths (dev or prod) have changed.
+  # The outputs (dev_changed, prod_changed) are then used by the other jobs.
+  check_paths:
+    runs-on: ubuntu-latest
+    outputs:
+      dev_changed: ${{ steps.filter.outputs.dev }}
+      prod_changed: ${{ steps.filter.outputs.prod }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            dev:
+              - 'envs/dev/**'
+              - 'modules/**'
+            prod:
+              - 'envs/prod/**'
+              - 'modules/**'
+
+  # ============== DEV ENVIRONMENT JOBS ==============
+  plan_dev:
+    needs: check_paths
+    if: github.event_name == 'pull_request' && needs.check_paths.outputs.dev_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: Azure # Corresponds to your GitHub Environment for Dev
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write # Added permission to comment on PRs
+    env:
+      TF_LOG: "INFO"
+      TF_INPUT: false
+      ARM_USE_OIDC: "true"
+      TF_WORKING_DIR: "envs/dev"
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+      - name: Setup Azure CLI OIDC for Dev
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.13.3 }
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -detailed-exitcode > plan_output.txt
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        continue-on-error: true
+      - name: Create Plan Body
+        id: plan_body
+        run: |
+          PLAN_CONTENT=$(cat plan_output.txt)
+          EXIT_CODE=${{ steps.plan.outputs.exitcode }}
+          if [ $EXIT_CODE -eq 1 ]; then
+            BODY="**Error: Terraform Plan for Dev Failed**\n\n<details><summary>Error Output</summary>\n\n\`\`\`\n${PLAN_CONTENT}\n\`\`\`\n\n</details>"
+          elif [ $EXIT_CODE -eq 0 ]; then
+            BODY="✅ **Terraform Plan for Dev - No Changes**"
+          else
+            BODY="**Terraform Plan for Dev**\n\n<details><summary>Show Plan</summary>\n\n\`\`\`terraform\n${PLAN_CONTENT}\n\`\`\`\n\n</details>"
+          fi
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Add Plan to PR
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ steps.plan_body.outputs.body }}
+          edit-mode: replace
+
+  apply_dev:
+    needs: check_paths
+    if: github.event_name == 'push' && needs.check_paths.outputs.dev_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: Azure # Corresponds to your GitHub Environment for Dev
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TF_LOG: "INFO"
+      TF_INPUT: false
+      ARM_USE_OIDC: "true"
+      TF_WORKING_DIR: "envs/dev"
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+      - name: Setup Azure CLI OIDC for Dev
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.13.3 }
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Plan
+        run: terraform plan -no-color -out=tfplan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+  # ============== PROD ENVIRONMENT JOBS ==============
+  plan_prod:
+    needs: check_paths
+    if: github.event_name == 'pull_request' && needs.check_paths.outputs.prod_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: Production # Recommend a separate 'Production' GitHub Environment
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write # Added permission to comment on PRs
+    env:
+      TF_LOG: "INFO"
+      TF_INPUT: false
+      ARM_USE_OIDC: "true"
+      TF_WORKING_DIR: "envs/prod"
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+      - name: Setup Azure CLI OIDC for Prod
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_PROD_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_PROD_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_PROD_SUBSCRIPTION_ID }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.13.3 }
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -detailed-exitcode > plan_output.txt
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        continue-on-error: true
+      - name: Create Plan Body
+        id: plan_body
+        run: |
+          PLAN_CONTENT=$(cat plan_output.txt)
+          EXIT_CODE=${{ steps.plan.outputs.exitcode }}
+          if [ $EXIT_CODE -eq 1 ]; then
+            BODY="**Error: Terraform Plan for Prod Failed**\n\n<details><summary>Error Output</summary>\n\n\`\`\`\n${PLAN_CONTENT}\n\`\`\`\n\n</details>"
+          elif [ $EXIT_CODE -eq 0 ]; then
+            BODY="✅ **Terraform Plan for Prod - No Changes**"
+          else
+            BODY="**Terraform Plan for Prod**\n\n<details><summary>Show Plan</summary>\n\n\`\`\`terraform\n${PLAN_CONTENT}\n\`\`\`\n\n</details>"
+          fi
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Add Plan to PR
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ steps.plan_body.outputs.body }}
+          edit-mode: replace
+
+  apply_prod:
+    needs: check_paths
+    if: github.event_name == 'push' && needs.check_paths.outputs.prod_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: Production # Recommend a separate 'Production' GitHub Environment
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TF_LOG: "INFO"
+      TF_INPUT: false
+      ARM_USE_OIDC: "true"
+      TF_WORKING_DIR: "envs/prod"
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+      - name: Setup Azure CLI OIDC for Prod
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_PROD_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_PROD_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_PROD_SUBSCRIPTION_ID }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.13.3 }
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Plan
+        run: terraform plan -no-color -out=tfplan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ${{ env.TF_WORKING_DIR }}
