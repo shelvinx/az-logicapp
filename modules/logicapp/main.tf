@@ -8,6 +8,8 @@ resource "azurerm_storage_account" "example" {
   https_traffic_only_enabled = true
   public_network_access_enabled = true
   shared_access_key_enabled = true
+  
+  tags = var.tags
 }
 
 module "avm-res-web-serverfarm" {
@@ -18,10 +20,10 @@ module "avm-res-web-serverfarm" {
   location            = var.location
   resource_group_name = var.resource_group_name
   os_type             = var.app_service_plan_os_type
-
-  sku_name = var.app_service_plan_sku
   zone_balancing_enabled = var.zone_balancing_enabled
   worker_count = 1
+
+  tags = var.tags
 }
 
 module "avm-res-web-site" {
@@ -52,5 +54,8 @@ module "avm-res-web-site" {
 
   site_config = {
     health_check_path = "/"
+    health_check_eviction_time_in_min = 2
   }
+
+  tags = var.tags
 }

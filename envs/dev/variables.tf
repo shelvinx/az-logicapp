@@ -32,3 +32,8 @@ variable "environment" {
   type        = string
   description = "The environment."
 }
+
+variable "tags" {
+  type        = map(any)
+  description = "The tags."
+}

@@ -17,3 +17,8 @@ logic_apps = {
     storage_account_name = "stworkflow1devuks01"
   }
 }
+
+tags = {
+  Environment = "dev"
+  ManagedBy   = "Terraform"
+}

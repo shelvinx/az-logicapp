@@ -1,13 +1,3 @@
-variable "app_service_plan_os_type" {
-  type = string
-  description = "App Service Plan OS Type"
-
-  validation {
-    condition     = var.app_service_plan_os_type == "Windows" || var.app_service_plan_os_type == "Linux"
-    error_message = "app_service_plan_os_type must be Windows or Linux"
-  }
-}
-
 variable "app_service_kind" {
   type = string
   description = "App Service Type"
@@ -15,6 +5,16 @@ variable "app_service_kind" {
   validation {
     condition     = var.app_service_kind == "functionapp" || var.app_service_kind == "webapp" || var.app_service_kind == "logicapp"
     error_message = "app_service_kind must be functionapp or webapp or logicapp"
+  }
+}
+
+variable "app_service_plan_os_type" {
+  type = string
+  description = "App Service Plan OS Type"
+
+  validation {
+    condition     = var.app_service_plan_os_type == "Windows" || var.app_service_plan_os_type == "Linux"
+    error_message = "app_service_plan_os_type must be Windows or Linux"
   }
 }
 
@@ -61,4 +61,9 @@ variable "logic_app_workflow_name" {
 variable "zone_balancing_enabled" {
     type = bool
     description = "Zone Balancing Enabled"
+}
+
+variable "tags" {
+    type = map(any)
+    description = "Tags"
 }

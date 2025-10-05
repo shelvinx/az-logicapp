@@ -4,6 +4,7 @@ resource "azurerm_resource_group" "rg" {
   
   name     = each.key
   location = each.value.location
+  tags     = var.tags
 }
 
 module "naming" {
@@ -22,8 +23,8 @@ module "logicapp" {
   resource_group_name = each.value.resource_group_name
   location            = var.location
 
-  app_service_plan_os_type = "Windows"
   app_service_plan_sku     = each.value.app_service_plan_sku
+  app_service_plan_os_type = "Windows"
   app_service_kind         = "logicapp"
 
   account_tier             = var.account_tier
@@ -37,4 +38,6 @@ module "logicapp" {
   zone_balancing_enabled = var.zone_balancing_enabled
 
   depends_on = [azurerm_resource_group.rg]
+
+  tags = var.tags
 }

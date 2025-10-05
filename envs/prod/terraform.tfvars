@@ -1,5 +1,0 @@
-location            = "uksouth"
-resource_group_name = "logicapp-test-prod"
-account_tier             = "Standard"
-account_replication_type = "LRS"
-app_service_plan_sku     = "WS1"
