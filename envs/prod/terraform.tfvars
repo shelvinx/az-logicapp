@@ -2,7 +2,7 @@ location                 = "uksouth"
 account_tier             = "Standard"
 account_replication_type = "LRS"
 zone_balancing_enabled   = false
-environment              = "dev"
+environment              = "prod"
 
 resource_groups = {
   lxr-rg-1 = {
@@ -15,11 +15,10 @@ logic_apps = {
     resource_group_name = "lxr-rg-1"
     app_service_plan_sku = "WS1"
     storage_account_name = "stworkflow1devuks01"
-    worker_count = 1
   }
 }
 
 tags = {
-  Environment = "dev"
+  Environment = "prod"
   ManagedBy   = "Terraform"
 }

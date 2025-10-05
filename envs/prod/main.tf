@@ -36,7 +36,6 @@ module "logicapp" {
   logic_app_workflow_name = module.naming[each.key].logic_app_workflow.name
 
   zone_balancing_enabled = var.zone_balancing_enabled
-  worker_count = each.value.worker_count
 
   depends_on = [azurerm_resource_group.rg]
 

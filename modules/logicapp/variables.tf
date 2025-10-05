@@ -67,3 +67,8 @@ variable "tags" {
     type = map(any)
     description = "Tags"
 }
+
+variable "worker_count" {
+    type = number
+    description = "Worker Count"
+}
