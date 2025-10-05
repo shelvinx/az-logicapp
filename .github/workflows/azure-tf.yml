@@ -32,19 +32,21 @@ jobs:
 
   # ============== DEV ENVIRONMENT JOBS ==============
   plan_dev:
+    name: "Plan: Dev Environment"
     needs: check_paths
     if: github.event_name == 'pull_request' && needs.check_paths.outputs.dev_changed == 'true'
     runs-on: ubuntu-latest
-    environment: Azure # Corresponds to your GitHub Environment for Dev
+    environment: Azure
     permissions:
       id-token: write
       contents: read
-      pull-requests: write # Added permission to comment on PRs
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: ./envs/dev
     env:
       TF_LOG: "INFO"
-      TF_INPUT: false
       ARM_USE_OIDC: "true"
-      TF_WORKING_DIR: "envs/dev"
     steps:
       - name: Code Checkout
         uses: actions/checkout@v4
@@ -58,54 +60,85 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.13.3 }
       - name: Terraform Init
+        id: init
         run: terraform init
-        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check
       - name: Terraform Validate
-        run: terraform validate
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        id: validate
+        run: terraform validate -no-color
       - name: Terraform Plan
         id: plan
-        run: |
-          terraform plan -no-color -detailed-exitcode > plan_output.txt
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -no-color -input=false
         continue-on-error: true
-      - name: Create Plan Body
-        id: plan_body
-        run: |
-          PLAN_CONTENT=$(cat plan_output.txt)
-          EXIT_CODE=${{ steps.plan.outputs.exitcode }}
-          if [ $EXIT_CODE -eq 1 ]; then
-            BODY="**Error: Terraform Plan for Dev Failed**\n\n<details><summary>Error Output</summary>\n\n\`\`\`\n${PLAN_CONTENT}\n\`\`\`\n\n</details>"
-          elif [ $EXIT_CODE -eq 0 ]; then
-            BODY="✅ **Terraform Plan for Dev - No Changes**"
-          else
-            BODY="**Terraform Plan for Dev**\n\n<details><summary>Show Plan</summary>\n\n\`\`\`terraform\n${PLAN_CONTENT}\n\`\`\`\n\n</details>"
-          fi
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "$BODY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-        working-directory: ${{ env.TF_WORKING_DIR }}
-      - name: Add Plan to PR
-        uses: peter-evans/create-or-update-comment@v4
+      - name: Post Plan to PR
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ steps.plan_body.outputs.body }}
-          edit-mode: replace
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Init ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Format 🖌️\`${{ steps.fmt.outcome }}\`
+            #### Terraform Validate 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan (Dev) 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`\n
+            ${process.env.PLAN}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes('Terraform Plan (Dev)')
+            });
+
+            if (botComment) {
+              github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output
+              });
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+            }
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
 
   apply_dev:
+    name: "Apply: Dev Environment"
     needs: check_paths
-    if: github.event_name == 'push' && needs.check_paths.outputs.dev_changed == 'true'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check_paths.outputs.dev_changed == 'true'
     runs-on: ubuntu-latest
-    environment: Azure # Corresponds to your GitHub Environment for Dev
+    environment: Azure
     permissions:
       id-token: write
       contents: read
+    defaults:
+      run:
+        working-directory: ./envs/dev
     env:
       TF_LOG: "INFO"
-      TF_INPUT: false
       ARM_USE_OIDC: "true"
-      TF_WORKING_DIR: "envs/dev"
     steps:
       - name: Code Checkout
         uses: actions/checkout@v4
@@ -120,29 +153,26 @@ jobs:
         with: { terraform_version: 1.13.3 }
       - name: Terraform Init
         run: terraform init
-        working-directory: ${{ env.TF_WORKING_DIR }}
-      - name: Terraform Plan
-        run: terraform plan -no-color -out=tfplan
-        working-directory: ${{ env.TF_WORKING_DIR }}
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve -input=false
 
   # ============== PROD ENVIRONMENT JOBS ==============
   plan_prod:
+    name: "Plan: Prod Environment"
     needs: check_paths
     if: github.event_name == 'pull_request' && needs.check_paths.outputs.prod_changed == 'true'
     runs-on: ubuntu-latest
-    environment: Production # Recommend a separate 'Production' GitHub Environment
+    environment: Production
     permissions:
       id-token: write
       contents: read
-      pull-requests: write # Added permission to comment on PRs
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: ./envs/prod
     env:
       TF_LOG: "INFO"
-      TF_INPUT: false
       ARM_USE_OIDC: "true"
-      TF_WORKING_DIR: "envs/prod"
     steps:
       - name: Code Checkout
         uses: actions/checkout@v4
@@ -156,54 +186,85 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.13.3 }
       - name: Terraform Init
+        id: init
         run: terraform init
-        working-directory: ${{ env.TF_WORKING_DIR }}
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check
       - name: Terraform Validate
-        run: terraform validate
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        id: validate
+        run: terraform validate -no-color
       - name: Terraform Plan
         id: plan
-        run: |
-          terraform plan -no-color -detailed-exitcode > plan_output.txt
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -no-color -input=false
         continue-on-error: true
-      - name: Create Plan Body
-        id: plan_body
-        run: |
-          PLAN_CONTENT=$(cat plan_output.txt)
-          EXIT_CODE=${{ steps.plan.outputs.exitcode }}
-          if [ $EXIT_CODE -eq 1 ]; then
-            BODY="**Error: Terraform Plan for Prod Failed**\n\n<details><summary>Error Output</summary>\n\n\`\`\`\n${PLAN_CONTENT}\n\`\`\`\n\n</details>"
-          elif [ $EXIT_CODE -eq 0 ]; then
-            BODY="✅ **Terraform Plan for Prod - No Changes**"
-          else
-            BODY="**Terraform Plan for Prod**\n\n<details><summary>Show Plan</summary>\n\n\`\`\`terraform\n${PLAN_CONTENT}\n\`\`\`\n\n</details>"
-          fi
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "$BODY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-        working-directory: ${{ env.TF_WORKING_DIR }}
-      - name: Add Plan to PR
-        uses: peter-evans/create-or-update-comment@v4
+      - name: Post Plan to PR
+        uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ steps.plan_body.outputs.body }}
-          edit-mode: replace
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Init ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Format 🖌️\`${{ steps.fmt.outcome }}\`
+            #### Terraform Validate 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan (Prod) 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`\n
+            ${process.env.PLAN}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes('Terraform Plan (Prod)')
+            });
+
+            if (botComment) {
+              github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output
+              });
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+            }
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
 
   apply_prod:
+    name: "Apply: Prod Environment"
     needs: check_paths
-    if: github.event_name == 'push' && needs.check_paths.outputs.prod_changed == 'true'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check_paths.outputs.prod_changed == 'true'
     runs-on: ubuntu-latest
-    environment: Production # Recommend a separate 'Production' GitHub Environment
+    environment: Production
     permissions:
       id-token: write
       contents: read
+    defaults:
+      run:
+        working-directory: ./envs/prod
     env:
       TF_LOG: "INFO"
-      TF_INPUT: false
       ARM_USE_OIDC: "true"
-      TF_WORKING_DIR: "envs/prod"
     steps:
       - name: Code Checkout
         uses: actions/checkout@v4
@@ -218,10 +279,5 @@ jobs:
         with: { terraform_version: 1.13.3 }
       - name: Terraform Init
         run: terraform init
-        working-directory: ${{ env.TF_WORKING_DIR }}
-      - name: Terraform Plan
-        run: terraform plan -no-color -out=tfplan
-        working-directory: ${{ env.TF_WORKING_DIR }}
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve -input=false
