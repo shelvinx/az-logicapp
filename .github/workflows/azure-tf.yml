@@ -25,10 +25,8 @@ jobs:
           filters: |
             dev:
               - 'envs/dev/**'
-              - 'modules/**'
             prod:
               - 'envs/prod/**'
-              - 'modules/**'
 
   # ============== DEV ENVIRONMENT JOBS ==============  
   plan_dev:
