@@ -1,3 +1,5 @@
+# DEPRECATED: This pipeline is no longer in use. Deployments are now handled by GitHub Actions.
+#
 # This pipeline is designed for deploying Terraform infrastructure to Azure.
 # It uses parameters to allow for deployment to different environments.
 #
