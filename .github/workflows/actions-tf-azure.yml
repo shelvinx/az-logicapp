@@ -5,84 +5,88 @@ on:
     branches:
       - main
     paths:
-      - terraform/**
+      - 'envs/dev/**'
   pull_request:
     branches:
       - main
     paths:
-      - terraform/**
+      - 'envs/dev/**'
 
-      env:
-        TF_LOG: "INFO"
-        ARM_USE_OIDC: "true"
-      steps:
-        - name: Code Checkout
-          uses: actions/checkout@v4
-        - name: Setup Azure CLI OIDC for Dev
-          uses: azure/login@v2
-          with:
-            client-id: ${{ secrets.AZURE_CLIENT_ID }}
-            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+env:
+  TF_LOG: "INFO"
+  ARM_USE_OIDC: "true"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
 
 jobs:
-  terraform:
-    name: "Terraform Infrastructure Change Management"
+  terraform-plan:
+    name: "Terraform Plan"
     runs-on: ubuntu-latest
+    environment: Azure
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     defaults:
       run:
         shell: bash
-        # We keep Terraform files in the terraform directory.
-        working-directory: ./terraform
+        working-directory: ./envs/dev
 
     steps:
-      - name: Checkout the repository to the runner
-        uses: actions/checkout@v2
+      - name: Checkout the repository
+        uses: actions/checkout@v4
 
-      - name: Setup Terraform with specified version on the runner
-        uses: hashicorp/setup-terraform@v2
+      - name: Setup Azure CLI OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.13.3
-    
-      - name: Terraform init
-        id: init
-        run: terraform init -backend-config="bucket=$BUCKET_TF_STATE"
 
-      - name: Terraform format
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Format
         id: fmt
         run: terraform fmt -check
-    
-      - name: Terraform validate
+        continue-on-error: true
+
+      - name: Terraform Validate
         id: validate
         run: terraform validate
 
-      - name: Terraform plan
+      - name: Terraform Plan
         id: plan
-        if: github.event_name == 'pull_request'
         run: terraform plan -no-color -input=false
         continue-on-error: true
-    
-      - uses: actions/github-script@v6
+
+      - name: Comment PR with Plan
+        uses: actions/github-script@v7
         if: github.event_name == 'pull_request'
         env:
           PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
         with:
           script: |
-            const output = `#### Terraform Format and Style 🖌`${{ steps.fmt.outcome }}`
-            #### Terraform Initialization ⚙️`${{ steps.init.outcome }}`
-            #### Terraform Validation 🤖`${{ steps.validate.outcome }}`
-            #### Terraform Plan 📖`${{ steps.plan.outcome }}`
+            const output = `#### Terraform Format and Style 🖌 \`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️ \`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖 \`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
 
             <details><summary>Show Plan</summary>
 
-            ```
+            \`\`\`terraform
             ${process.env.PLAN}
-
-            ```
+            \`\`\`
 
             </details>
 
-            *Pushed by: @${{ github.actor }}, Action: `${{ github.event_name }}`*`;
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -95,6 +99,35 @@ jobs:
         if: steps.plan.outcome == 'failure'
         run: exit 1
 
+  terraform-apply:
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    environment: Azure
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: terraform-plan
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./envs/dev
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Setup Azure CLI OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      - name: Terraform Init
+        run: terraform init
+
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
