@@ -40,12 +40,13 @@ module "avm-res-web-site" {
 
   storage_account_access_key = azurerm_storage_account.example.primary_access_key
   storage_account_name = azurerm_storage_account.example.name
-  enable_application_insights = false
+  enable_application_insights = var.enable_application_insights
   https_only = true
   client_certificate_mode = "OptionalInteractiveUser"
   client_certificate_enabled = false
   managed_identities = {
     system_assigned = true
+    user_assigned_resource_ids = var.user_assigned_identity_resource_ids
   }
 
   app_settings = {

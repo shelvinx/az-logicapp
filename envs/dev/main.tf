@@ -1,12 +1,3 @@
-# Create one RG per unique name
-resource "azurerm_resource_group" "rg" {
-  for_each = var.resource_groups
-  
-  name     = each.key
-  location = each.value.location
-  tags     = var.tags
-}
-
 module "naming" {
   for_each = var.logic_apps
   source   = "Azure/naming/azurerm"
@@ -16,11 +7,32 @@ module "naming" {
   suffix = [each.key, "uks", var.environment]
 }
 
+resource "azurerm_resource_group" "rg" {
+  for_each = var.logic_apps
+  
+  name     = "rg-${each.key}"
+  location = each.value.location
+  tags     = var.tags
+}
+
+resource "azurerm_resource_group" "shared" {
+  name     = var.shared_resource_group.name
+  location = var.shared_resource_group.location
+  tags     = var.tags
+}
+
+resource "azurerm_user_assigned_identity" "example" {
+  location            = azurerm_resource_group.shared.location
+  name                = "id-logicapp"
+  resource_group_name = azurerm_resource_group.shared.name
+}
+
 module "logicapp" {
   for_each = var.logic_apps
   source   = "../../modules/logicapp"
+  # version = "0.19.1"
 
-  resource_group_name = each.value.resource_group_name
+  resource_group_name = azurerm_resource_group.rg[each.key].name
   location            = var.location
 
   app_service_plan_sku     = each.value.app_service_plan_sku
@@ -38,7 +50,9 @@ module "logicapp" {
   zone_balancing_enabled = var.zone_balancing_enabled
   worker_count = each.value.worker_count
 
-  depends_on = [azurerm_resource_group.rg]
+  enable_application_insights = false
+
+  user_assigned_identity_resource_ids = [azurerm_user_assigned_identity.example.id]
 
   tags = var.tags
 }

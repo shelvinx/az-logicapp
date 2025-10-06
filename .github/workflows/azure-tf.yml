@@ -30,7 +30,7 @@ jobs:
               - 'envs/prod/**'
               - 'modules/**'
 
-  # ============== DEV ENVIRONMENT JOBS ==============
+  # ============== DEV ENVIRONMENT JOBS ==============  
   plan_dev:
     name: "Plan: Dev Environment"
     needs: check_paths
@@ -80,20 +80,21 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Terraform Init ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Format 🖌️\`${{ steps.fmt.outcome }}\`
-            #### Terraform Validate 🤖\`${{ steps.validate.outcome }}\`
-            #### Terraform Plan (Dev) 📖\`${{ steps.plan.outcome }}\`
+            const output = `#### Terraform Init ⚙️`${{ steps.init.outcome }}`
+            #### Terraform Format 🖌️`${{ steps.fmt.outcome }}`
+            #### Terraform Validate 🤖`${{ steps.validate.outcome }}`
+            #### Terraform Plan (Dev) 📖`${{ steps.plan.outcome }}`
 
             <details><summary>Show Plan</summary>
 
-            \`\`\`\n
+            ```\n
             ${process.env.PLAN}
-            \`\`\`
+
+            ```
 
             </details>
 
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            *Pushed by: @${{ github.actor }}, Action: `${{ github.event_name }}`*`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -156,7 +157,7 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
 
-  # ============== PROD ENVIRONMENT JOBS ==============
+  # ============== PROD ENVIRONMENT JOBS ==============  
   plan_prod:
     name: "Plan: Prod Environment"
     needs: check_paths
@@ -206,20 +207,21 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Terraform Init ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Format 🖌️\`${{ steps.fmt.outcome }}\`
-            #### Terraform Validate 🤖\`${{ steps.validate.outcome }}\`
-            #### Terraform Plan (Prod) 📖\`${{ steps.plan.outcome }}\`
+            const output = `#### Terraform Init ⚙️`${{ steps.init.outcome }}`
+            #### Terraform Format 🖌️`${{ steps.fmt.outcome }}`
+            #### Terraform Validate 🤖`${{ steps.validate.outcome }}`
+            #### Terraform Plan (Prod) 📖`${{ steps.plan.outcome }}`
 
             <details><summary>Show Plan</summary>
 
-            \`\`\`\n
+            ```\n
             ${process.env.PLAN}
-            \`\`\`
+
+            ```
 
             </details>
 
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            *Pushed by: @${{ github.actor }}, Action: `${{ github.event_name }}`*`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
