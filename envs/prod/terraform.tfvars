@@ -1,24 +1,24 @@
 location                 = "uksouth"
 account_tier             = "Standard"
 account_replication_type = "LRS"
-zone_balancing_enabled   = true
-environment              = "dev"
+zone_balancing_enabled   = false
+environment              = "prod"
 
-shared_resource_group = {
-  name     = "lxr-rg-shared"
-  location = "uksouth"
+resource_groups = {
+  lxr-rg-1 = {
+    location = "uksouth"
+  }
 }
 
 logic_apps = {
   lxr-app-1 = {
-    location = "uksouth"
+    resource_group_name = "lxr-rg-1"
     app_service_plan_sku = "WS1"
     storage_account_name = "stworkflow1devuks01"
-    worker_count = 1
   }
 }
 
 tags = {
-  Environment = "dev"
+  Environment = "prod"
   ManagedBy   = "Terraform"
 }

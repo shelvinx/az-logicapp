@@ -60,10 +60,25 @@ variable "logic_app_workflow_name" {
 
 variable "zone_balancing_enabled" {
     type = bool
-    description = "Zone Balancing Enabled"
+    description = "Zone Balancing Enabled!"
 }
 
 variable "tags" {
     type = map(any)
     description = "Tags"
+}
+
+variable "worker_count" {
+    type = number
+    description = "Worker Count"
+}
+
+variable "enable_application_insights" {
+  type = bool
+  description = "Enable Application Insights"
+}
+
+variable "user_assigned_identity_resource_ids" {
+  type        = list(string)
+  description = "The list of resource IDs for user-assigned managed identities to associate with the Logic App."
 }

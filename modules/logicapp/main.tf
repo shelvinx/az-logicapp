@@ -20,8 +20,9 @@ module "avm-res-web-serverfarm" {
   location            = var.location
   resource_group_name = var.resource_group_name
   os_type             = var.app_service_plan_os_type
+  sku_name            = var.app_service_plan_sku
   zone_balancing_enabled = var.zone_balancing_enabled
-  worker_count = 1
+  worker_count = var.worker_count
 
   tags = var.tags
 }
@@ -39,12 +40,13 @@ module "avm-res-web-site" {
 
   storage_account_access_key = azurerm_storage_account.example.primary_access_key
   storage_account_name = azurerm_storage_account.example.name
-  enable_application_insights = false
+  enable_application_insights = var.enable_application_insights
   https_only = true
   client_certificate_mode = "OptionalInteractiveUser"
   client_certificate_enabled = false
   managed_identities = {
     system_assigned = true
+    user_assigned_resource_ids = var.user_assigned_identity_resource_ids
   }
 
   app_settings = {

@@ -1,9 +1,6 @@
-variable "shared_resource_group" {
-  type = object({
-    name     = string
-    location = string
-  })
-  description = "The resource group for shared resources."
+variable "resource_groups" {
+  type = map(any)
+  description = "The resource groups to be created."
 }
 
 variable "logic_apps" {
