@@ -4,6 +4,6 @@ run "validate_logicapp_kind" {
 
   assert {
     condition     = module.logicapp.kind == "logicapp"
-    error_message = "Logic App kind is not set to 'logicapp'"
+    error_message = "Logic App kind is not set to 'lpp'"
   }
 }
