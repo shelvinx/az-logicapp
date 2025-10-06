@@ -30,7 +30,7 @@ resource "azurerm_user_assigned_identity" "example" {
 module "logicapp" {
   for_each = var.logic_apps
   source   = "../../modules/logicapp"
-  # version = "0.19.1"
+  # version = "0.19.2"
 
   resource_group_name = azurerm_resource_group.rg[each.key].name
   location            = var.location

@@ -64,10 +64,59 @@ jobs:
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color
+      # 5. Terraform Plan
+      # -no-color removes ANSI color codes for clean output
+      # The output is saved to the 'plan' step output variable
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color -input=false
-        continue-on-error: true
+        run: |
+          PLAN_OUTPUT=$(terraform plan -no-color -input=false)
+          echo "plan_output<<EOF" >> $GITHUB_OUTPUT
+          echo "$PLAN_OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # 6. Post Plan as PR Comment
+      # Uses github-script to create or update a comment
+      - name: Post Terraform Plan to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### 📝 Terraform Plan 📝
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${{ steps.plan.outputs.plan_output }}
+            \`\`\`
+
+            </details>`;
+
+            const comment_tag = "";
+            const full_output = output + "\n\n" + comment_tag;
+
+            // Find an existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing_comment = comments.find(c => c.body.includes(comment_tag));
+
+            // If comment exists, update it
+            if (existing_comment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing_comment.id,
+                body: full_output
+              });
+            } else { // Otherwise, create a new one
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: full_output
+              });
+            }
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
         run: exit 1
