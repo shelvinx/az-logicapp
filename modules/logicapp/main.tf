@@ -22,7 +22,6 @@ module "avm-res-web-serverfarm" {
   os_type             = var.app_service_plan_os_type
   sku_name            = var.app_service_plan_sku
   zone_balancing_enabled = var.zone_balancing_enabled
-  worker_count = var.worker_count
 
   tags = var.tags
 }
@@ -41,6 +40,9 @@ module "avm-res-web-site" {
   storage_account_access_key = azurerm_storage_account.example.primary_access_key
   storage_account_name = azurerm_storage_account.example.name
   enable_application_insights = var.enable_application_insights
+  application_insights = {
+    workspace_resource_id = var.application_insights_workspace_id
+  }
   https_only = true
   client_certificate_mode = "OptionalInteractiveUser"
   client_certificate_enabled = false
@@ -51,7 +53,7 @@ module "avm-res-web-site" {
 
   app_settings = {
     FUNCTIONS_WORKER_RUNTIME = "dotnet"
-    #WEBSITE_RUN_FROM_PACKAGE = "1"
+    # WEBSITE_RUN_FROM_PACKAGE = "1"
   }
 
   site_config = {

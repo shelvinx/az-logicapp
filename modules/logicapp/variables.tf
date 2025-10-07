@@ -68,11 +68,6 @@ variable "tags" {
     description = "Tags"
 }
 
-variable "worker_count" {
-    type = number
-    description = "Worker Count"
-}
-
 variable "enable_application_insights" {
   type = bool
   description = "Enable Application Insights"
@@ -81,4 +76,10 @@ variable "enable_application_insights" {
 variable "user_assigned_identity_resource_ids" {
   type        = list(string)
   description = "The list of resource IDs for user-assigned managed identities to associate with the Logic App."
+}
+
+variable "application_insights_workspace_id" {
+  type        = string
+  description = "The resource ID of the Log Analytics workspace to associate with Application Insights."
+  default     = null
 }

@@ -1,9 +1,17 @@
-variable "shared_resource_group" {
+variable "keyvault_resource_group" {
   type = object({
     name     = string
     location = string
   })
-  description = "The resource group for shared resources."
+  description = "The resource group for keyvault resources."
+}
+
+variable "loganalytics_resource_group" {
+  type = object({
+    name     = string
+    location = string
+  })
+  description = "The resource group for loganalytics resources."
 }
 
 variable "logic_apps" {

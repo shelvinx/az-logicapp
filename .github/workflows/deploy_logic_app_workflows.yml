@@ -1,0 +1,93 @@
+name: Build and Deploy Logic App Workflows
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'workflow_definitions/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  get-logic-app-names:
+    name: 'Get Logic App Names'
+    runs-on: ubuntu-latest
+    environment: Azure
+    
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
+
+      - name: 'Azure Login'
+        uses: Azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./envs/dev
+
+      - name: Terraform Output
+        id: tf-output
+        run: echo "app_names=$(terraform output -json logic_app_names)" >> $GITHUB_OUTPUT
+        working-directory: ./envs/dev
+
+      - name: Set Matrix
+        id: set-matrix
+        run: echo "matrix=${{ steps.tf-output.outputs.app_names }}" >> $GITHUB_OUTPUT
+
+  build-and-deploy:
+    name: 'Build and Deploy'
+    needs: get-logic-app-names
+    runs-on: ubuntu-latest
+    environment: Azure
+    strategy:
+      matrix:
+        app_name: ${{ fromJson(needs.get-logic-app-names.outputs.matrix) }}
+
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
+
+      - name: 'Prepare deployment package'
+        run: |
+          mkdir -p deploy
+          cp workflow_definitions/host.json deploy/
+          cp workflow_definitions/connections.json deploy/
+          cp -r workflow_definitions/*/ deploy/
+          zip -r deployment.zip deploy
+
+      - name: 'Azure Login'
+        uses: Azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: 'Deploy to Staging Slot'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ matrix.app_name }}
+          slot-name: 'staging' # Deploy to the staging slot
+          package: deployment.zip
+
+      - name: 'Swap Staging to Production'
+        uses: Azure/cli@v1 # Use Azure CLI to perform the slot swap
+        with:
+          inlineScript: |
+            # Get the resource group name for the Logic App
+            RESOURCE_GROUP=$(az webapp show --name ${{ matrix.app_name }} --query resourceGroup --output tsv)
+            # Perform the slot swap
+            az webapp deployment slot swap --resource-group $RESOURCE_GROUP --name ${{ matrix.app_name }} --slot staging --target-slot Production --action-type swap

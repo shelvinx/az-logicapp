@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/random"
       version = " ~> 3.7.2"
     }
+    azapi = {
+      source = "Azure/azapi"
+      version = "2.7.0"
+    }
   }
   backend "azurerm" {
     resource_group_name  = "rg-tfstate-management"
@@ -24,5 +28,9 @@ provider "azurerm" {
       prevent_deletion_if_contains_resources = false
     }
   }
+  use_oidc = true
+}
+
+provider "azapi" {
   use_oidc = true
 }

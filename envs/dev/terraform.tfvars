@@ -4,8 +4,13 @@ account_replication_type = "LRS"
 zone_balancing_enabled   = true
 environment              = "dev"
 
-shared_resource_group = {
+keyvault_resource_group = {
   name     = "lxr-rg-shared"
+  location = "uksouth"
+}
+
+loganalytics_resource_group = {
+  name     = "lxr-rg-loganalytics"
   location = "uksouth"
 }
 
@@ -14,7 +19,6 @@ logic_apps = {
     location = "uksouth"
     app_service_plan_sku = "WS1"
     storage_account_name = "stworkflow1devuks01"
-    worker_count = 1
   }
 }
 
